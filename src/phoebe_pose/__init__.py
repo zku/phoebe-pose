@@ -1,18 +1,22 @@
+import asyncio
+import concurrent
 import os
+import traceback
+from glob import glob
 from pathlib import Path
+from typing import Generator
+
+import streamlit as st
+import streamlit.web.bootstrap
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from typing import Generator
-from glob import glob
-import streamlit.web.bootstrap
-import streamlit as st
-import traceback
 
 load_dotenv()
 
 ROOT_DIRECTORY = Path(os.getcwd())
 
+NUM_IMAGE_GENERATIONS = 3
 TITLE = "Phoebe Image Generator"
 
 INITIAL_PROMPT = """
@@ -54,54 +58,69 @@ def load_images() -> Generator[bytes, None, None]:
             yield f.read()
 
 
-def generate_images(user_instructions: str) -> Generator[bytes, None, None]:
+def generate_images(user_instructions: str) -> list[bytes]:
     """Generates one or more images from the given user instructions."""
-
-    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-    contents: types.Content = []
-    contents.append(types.Content(role="user", parts=[types.Part(text=INITIAL_PROMPT)]))
-    contents.append(
-        types.Content(
-            role="user",
-            parts=[types.Part(inline_data=types.Blob(data=data, mime_type="image/png")) for data in load_images()],
-        )
-    )
-    contents.append(
-        types.Content(role="user", parts=[types.Part(text=TASK_PROMPT.format(user_instructions=user_instructions))])
-    )
-
+    parts = [
+        types.Part(text=INITIAL_PROMPT),
+        *[
+            types.Part(inline_data=types.Blob(data=data, mime_type="image/png"))
+            for data in load_images()
+        ],
+        types.Part(text=TASK_PROMPT.format(user_instructions=user_instructions)),
+    ]
     generation_config = types.GenerateContentConfig(
         temperature=1.0,
+        # We only care about images, but the API requires us to accept TEXT too.
         response_modalities=[types.Modality.IMAGE, types.Modality.TEXT],
     )
 
+    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
     response = client.models.generate_content(
-        model="gemini-2.0-flash-exp-image-generation", contents=contents, config=generation_config
+        model="gemini-2.0-flash-exp-image-generation",
+        contents=types.Content(role="user", parts=parts),
+        config=generation_config,
     )
 
-    for candidate in response.candidates:
-        for part in candidate.content.parts:
-            if part.inline_data:
-                yield part.inline_data.data
+    return [
+        part.inline_data.data
+        for candidate in response.candidates
+        for part in candidate.content.parts
+        if part.inline_data and part.inline_data.data
+    ]
+
+
+async def generate_images_async(prompt: str, count: int = 1) -> list[bytes]:
+    """Generates multiple images for the same prompt."""
+    loop = asyncio.get_running_loop()
+    tasks = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=count) as executor:
+        for _ in range(count):
+            task_future = loop.run_in_executor(executor, generate_images, prompt)
+            tasks.append(task_future)
+    results = await asyncio.gather(*tasks)
+    return [image for images in results for image in images]
 
 
 def main_streamlit() -> None:
     """Streamlit app entry point. This is executed every frame."""
-    st.set_page_config(page_title=TITLE)
-    st.title(TITLE)
+    st.set_page_config(page_title=TITLE, layout="centered")
+    st.header("🐕 " + TITLE, divider="rainbow")
 
     for prompt in EXAMPLE_PROMPTS:
         st.code(prompt, language="markdown")
 
-    prompt = st.text_input("Enter image description")
-    if prompt:
-        with st.spinner("Generating image...", show_time=True):
-            for image_bytes in generate_images(prompt):
-                st.image(image_bytes)
+    if prompt := st.text_input("Enter image description"):
+        with st.spinner("Generating image(s)...", show_time=True):
+            all_images = asyncio.run(generate_images_async(prompt, NUM_IMAGE_GENERATIONS))
+        for col, image_bytes in zip(st.columns(NUM_IMAGE_GENERATIONS), all_images):
+            col.image(image_bytes)
 
 
+# Awkward hack to make streamlit work with uv. Streamlit expects to be called with its own CLI but
+# this breaks our imports and package management. The initial main() call launches the streamlit
+# entry point, and subsequent executions of this file will be triggered from streamlit.
 for frame in traceback.extract_stack():
-    if "streamlit" in frame.filename:
+    if "streamlit/" in frame.filename:
         main_streamlit()
         break
 
