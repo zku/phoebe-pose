@@ -1,18 +1,15 @@
 import asyncio
 import concurrent
 import os
-import traceback
 from glob import glob
 from pathlib import Path
 from typing import Generator
 
 import streamlit as st
 import streamlit.web.bootstrap
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-load_dotenv()
 
 ROOT_DIRECTORY = Path(os.getcwd())
 
@@ -46,7 +43,7 @@ Using the reference images of Phoebe, please generate a new image of Phoebe with
 
 EXAMPLE_PROMPTS = [
     "Phoebe sitting in a wheat field like in Gladiator. Ghibli comic style.",
-    "Professional photo shoot of Phoebe, close up. Fotorealistic. Black background. Smooth lighting.",
+    "Cyberpunk illustration of Phoebe in dimly lit streets of an Asian city.",
 ]
 
 
@@ -116,14 +113,5 @@ def main_streamlit() -> None:
             col.image(image_bytes)
 
 
-# Awkward hack to make streamlit work with uv. Streamlit expects to be called with its own CLI but
-# this breaks our imports and package management. The initial main() call launches the streamlit
-# entry point, and subsequent executions of this file will be triggered from streamlit.
-for frame in traceback.extract_stack():
-    if "streamlit/" in frame.filename:
-        main_streamlit()
-        break
-
-
-def main() -> None:
-    streamlit.web.bootstrap.run(__file__, False, [], {})
+if __name__ == '__main__':
+    main_streamlit()

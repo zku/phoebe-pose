@@ -11,3 +11,4 @@ wheels/
 
 # Project files
 .env
+.streamlit/secrets.toml
