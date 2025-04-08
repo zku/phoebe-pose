@@ -1,3 +1,5 @@
+"""Generate AI images of Phoebe."""
+
 import asyncio
 import concurrent
 import os
@@ -6,10 +8,8 @@ from pathlib import Path
 from typing import Generator
 
 import streamlit as st
-import streamlit.web.bootstrap
 from google import genai
 from google.genai import types
-
 
 ROOT_DIRECTORY = Path(os.getcwd())
 
@@ -20,9 +20,11 @@ INITIAL_PROMPT = """
 # Introduction
 
 You are an AI image understanding and generation expert.
-Provided are multiple images of a border terrier dog called "Phoebe", the sweetest little elderly girl.
-Your task is to analyze these images and extract the essence of this dog (i.e. her face, coloring, demeanor, posture, character, etc.)
-and then create a new image of Phoebe in a different environment.
+Provided are multiple images of a border terrier dog called "Phoebe",
+the sweetest little elderly girl. Your task is to analyze these images
+and extract the essence of this dog (i.e. her face, coloring, demeanor,
+posture, character, etc.) and then create a new image of Phoebe in a
+different environment.
 
 # Images of Phoebe
 """.strip()
@@ -36,7 +38,8 @@ Follow these guidelines unless specifically instructed otherwise:
 - Maintain her colors and proportions
 - Maintain the shape and features of her face - this is very important
 
-Using the reference images of Phoebe, please generate a new image of Phoebe with the following properties:
+Using the reference images of Phoebe, please generate a new image of Phoebe
+with the following properties:
 
 {user_instructions}
 """.strip()
@@ -48,7 +51,7 @@ EXAMPLE_PROMPTS = [
 
 
 def load_images() -> Generator[bytes, None, None]:
-    """Loads reference images from disk."""
+    """Load reference images from disk."""
     assets_dir = ROOT_DIRECTORY / "assets"
     for image_path in glob("**/*.png", root_dir=assets_dir):
         with open(assets_dir / image_path, "rb") as f:
@@ -56,7 +59,7 @@ def load_images() -> Generator[bytes, None, None]:
 
 
 def generate_images(user_instructions: str) -> list[bytes]:
-    """Generates one or more images from the given user instructions."""
+    """Generate one or more images from the given user instructions."""
     parts = [
         types.Part(text=INITIAL_PROMPT),
         *[
@@ -87,7 +90,7 @@ def generate_images(user_instructions: str) -> list[bytes]:
 
 
 async def generate_images_async(prompt: str, count: int = 1) -> list[bytes]:
-    """Generates multiple images for the same prompt."""
+    """Generate multiple images for the same prompt."""
     loop = asyncio.get_running_loop()
     tasks = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=count) as executor:
@@ -113,5 +116,5 @@ def main_streamlit() -> None:
             col.image(image_bytes)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main_streamlit()
