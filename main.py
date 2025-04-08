@@ -105,7 +105,9 @@ def main_streamlit() -> None:
     """Streamlit app entry point. This is executed every frame."""
     st.set_page_config(page_title=TITLE, layout="centered")
     st.header("🐕 " + TITLE, divider="rainbow")
-
+    api_key = st.sidebar.text_input("Google API Key", type="password")
+    if api_key:
+        os.environ['GOOGLE_API_KEY'] = api_key
     for prompt in EXAMPLE_PROMPTS:
         st.code(prompt, language="markdown")
     if prompt := st.text_area("Enter image description"):
