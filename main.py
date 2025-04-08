@@ -108,13 +108,11 @@ def main_streamlit() -> None:
 
     for prompt in EXAMPLE_PROMPTS:
         st.code(prompt, language="markdown")
-
-    if prompt := st.text_input("Enter image description"):
+    if prompt := st.text_area("Enter image description"):
         with st.spinner("Generating image(s)...", show_time=True):
             all_images = asyncio.run(generate_images_async(prompt, NUM_IMAGE_GENERATIONS))
         for col, image_bytes in zip(st.columns(NUM_IMAGE_GENERATIONS), all_images):
             col.image(image_bytes)
-
 
 if __name__ == "__main__":
     main_streamlit()
