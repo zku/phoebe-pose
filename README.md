@@ -1,3 +1,3 @@
-`uv run phoebe-pose`
+`$ streamlit run main.py`
 
 ![Example](.github/img/example.png)
