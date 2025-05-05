@@ -37,7 +37,7 @@ google-auth==2.38.0
     # via google-genai
 google-genai==1.9.0
     # via phoebe-pose (pyproject.toml)
-h11==0.14.0
+h11==0.16.0
     # via httpcore
 httpcore==1.0.7
     # via httpx
